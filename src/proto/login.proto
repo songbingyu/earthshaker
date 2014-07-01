@@ -1,0 +1,43 @@
+/*
+for test
+*/
+
+package netpb;
+
+enum MsgID {
+	EM_CS_LOGIN = 0;
+	EM_SC_LOGIN = 1;
+}
+
+message NetMsg {
+	required MsgID m_ID = 1;
+	optional CSNetMsg m_CSNetMsg = 2;
+	optional SCNetMsg m_SCNetMsg = 3;
+}
+
+message CSNetMsg {
+	optional CSLoginReq m_CSLoginReq = 1;
+}
+
+message SCNetMsg {
+	optional SCLoginRsp m_SCLoginRsp = 1;
+}
+
+message CSLoginReq {
+  required string m_Name = 1;
+  required string m_Pwd = 2;
+}
+
+message SCLoginRsp {
+	enum LoginErrorType {
+		SUCCESS = 0;
+		PWD_ERROR = 1;
+	}
+	required LoginErrorType m_Ret = 1; 
+	message Result {
+		required int64 m_Guid = 1;
+		required string m_Name = 2;
+		required string m_Hp = 3;
+	}
+	repeated Result m_Roles = 2;
+}
