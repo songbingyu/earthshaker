@@ -1,4 +1,6 @@
 // add by bingyu
 
-2014.7.2  finish log, add buf, thread safe,  write log to file and log rotate
+2014.7.2  finish log, add buf, thread safe,  write log to file and log rotatei
+
+2014.7.3  draw  server architecture
 
