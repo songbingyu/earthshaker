@@ -1,0 +1,11 @@
+package ES
+
+
+import(
+
+)
+
+type TcpClient struct {
+
+
+}
