@@ -12,7 +12,6 @@ import (
     "net"
     "sync"
     "time"
-
     "elog"
 )
 
@@ -24,20 +23,19 @@ type Acceptor struct {
     stopChan       chan bool
 }
 
-func newAcceptor( w *sync.WaitGroup, ed *EventDispatch, ch chan bool  )( acc *Acceptor ){
-
+func newAcceptor(   w *sync.WaitGroup, ed *EventDispatch, ch chan bool  )( acc *Acceptor ){
+    
     acc = &Acceptor{
         waitGroup: w,
         eventDispatch : ed,
         stopChan : ch,
     }
-
     return
 }
 
 func( a *Acceptor )loop(  ch chan *Connection ) {
 
-   elog.LogSys(" acceptor is begin ")
+    elog.LogSys(" acceptor is begin ")
     a.waitGroup.Add(1)
     defer a.waitGroup.Done()
 
@@ -64,14 +62,14 @@ func( a *Acceptor )loop(  ch chan *Connection ) {
         
         elog.LogSys("receive new conn")
         
-        newConn ,err := NewConn( conn, a.eventDispatch )
-
-        ch <- newConn
+        //newConn ,err := NewConn( conn, a.eventDispatch, a.waitGroup )
         
-        elog.LogSysln(" chan len :", len(ch))
+        a.eventDispatch.AddNewConnEvent( conn )
+
     }
     
     elog.LogSys(" acceptor is end ")
 }
+
 
 

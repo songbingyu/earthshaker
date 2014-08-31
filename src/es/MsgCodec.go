@@ -11,7 +11,7 @@ import (
     "errors"
     //"bytes"
     "unsafe"
-    //"reflect"
+    "reflect"
     "encoding/binary"
     "elog"
     proto "code.google.com/p/goprotobuf/proto"
@@ -70,15 +70,10 @@ func defErrorCallback( conn *Connection ) {
 
 func defMsgCallback( conn *Connection, id int32,  msg proto.Message ) {
 
-    ne, _:= conn.eventDispatch.allocEvent()
-    ne.conn = conn
-    ne.eventType = READ
-    ne.id = id
-    ne.msg = msg 
-    conn.eventDispatch.pushEvent( ne )
+    conn.eventDispatch.AddConnReadEvent( conn, id, msg )
 }
 
-func ( lmp *LiteMsgParse ) parse( conn *Connection, msg proto.Message) ( id int32, errNo int) {
+func ( lmp *LiteMsgParse ) parse( conn *Connection ) ( id int32, errNo int, msg proto.Message ) {
     
     var len int32
     //Fixme  add little big endian cfg 
@@ -121,6 +116,9 @@ func ( lmp *LiteMsgParse ) parse( conn *Connection, msg proto.Message) ( id int3
                 errNo  =c_ParseErr
                 return
             }
+
+            msg = lmp.msgFactory.createMsgById( id )
+            elog.LogSysln(" create msg type ", reflect.TypeOf( msg ))
             err = proto.Unmarshal( b, msg) 
             if err != nil {
                 elog.LogSys(" protobuf parse  msg body fail ", err )
@@ -170,8 +168,8 @@ func ( lmp * LiteMsgParse )  Encode ( conn *Connection) error {
     elog.LogSysln( "recv msg :",conn.recvBuf.Size() )
     for conn.recvBuf.Size() >= int(c_MinMsgLen) {
         
-         var msg proto.Message
-         id, ret := lmp.parse( conn, msg )
+         id, ret ,msg := lmp.parse( conn )
+         elog.LogSysln(" parse msg type ", reflect.TypeOf( msg ))
          if ret == c_NoError {
             //call back 
             lmp.msgCb( conn, id, msg )                 
@@ -215,16 +213,16 @@ func ( lmp *LiteMsgParse ) Decode( conn *Connection, id int32, msg proto.Message
     return err  
 }
 
-func ( lmp *LiteMsgParse ) setMsgCb( cb MSG_CALLBACK ) {
+func ( lmp *LiteMsgParse ) SetMsgCb( cb MSG_CALLBACK ) {
 
     lmp.msgCb = cb
 }
 
-func ( lmp *LiteMsgParse ) setErrCb( cb ERROR_CALLBACK ) {
+func ( lmp *LiteMsgParse ) SetErrCb( cb ERROR_CALLBACK ) {
     lmp.errCb = cb
 }
 
-func ( lmp *LiteMsgParse ) setMsgFactory( factory IMsgFactory ) {
+func ( lmp *LiteMsgParse ) SetMsgFactory( factory IMsgFactory ) {
     lmp.msgFactory = factory;
 }
 

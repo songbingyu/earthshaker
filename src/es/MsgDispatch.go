@@ -6,52 +6,63 @@
 package  es
 
 import (
-    "reflect"
+    //"reflect"
     
-    //"elog"
+    "elog"
     proto "code.google.com/p/goprotobuf/proto"
 )
 
-type CALLBACK     func( *Connection, *proto.Message ) 
+type CALLBACK     func( *Connection,  proto.Message  ) 
 
-type  MsgInfo  struct {
-    cb         CALLBACK
-    msgType    reflect.Type
-}
 
 type  MsgDispatcher struct {
     
-   msgMap   [MSG_MAX]*MsgInfo 
+   cbMap   [MSG_MAX] CALLBACK 
 }
 
-var  instance  *MsgDispatcher
 
-func  GetMsgDisptcher() *MsgDispatcher {
+func  NewMsgDispatcher() *MsgDispatcher {
 
-    if instance == nil {
-        instance = &MsgDispatcher {
-        }
+    md := &MsgDispatcher {
+
     }
-    return instance
+    return md
 }
 
-func ( md *MsgDispatcher ) RegistMsg( id int, cb CALLBACK, msg reflect.Type   ) {
+func ( md *MsgDispatcher ) RegistMsgCb( id int, cb CALLBACK ) {
     
-    md.msgMap[id] = &MsgInfo { cb, msg }
+    md.cbMap[id] = cb
 }
 
-func ( md *MsgDispatcher ) UnregistMsg( id int  ) {
+func ( md *MsgDispatcher ) UnregistMsgCb( id int  ) {
     
-    md.msgMap[id] = nil
+    md.cbMap[id] = nil
 }
 
-func (md *MsgDispatcher ) GetMsgInfo( id int  )  ( info *MsgInfo ) {
+func ( md* MsgDispatcher ) DispatchMsg( conn *Connection, id int32,msg proto.Message ) {
 
-    info = md.msgMap[id]
-    return 
+    if id >=  MSG_MAX {
+        return 
+    }
+
+    elog.LogSys(" dispatcher msg :%d ", id )
+    
+    cb  := md.cbMap[id]
+    
+    if cb == nil {
+        
+        elog.LogSys(" dispatcher msg :%d  not register cb ", id )
+        return
+    }
+
+    cb( conn, msg  )
 }
 
+func (md *MsgDispatcher ) GetMsgCb( id int32 )  CALLBACK  {
 
+    cb := md.cbMap[id]
+    return cb 
+}
 
 
 

@@ -2,7 +2,10 @@ package es
 
 
 import(
-    "elog"
+    "net"
+   "sync"
+   "elog"
+    proto "code.google.com/p/goprotobuf/proto"
 )
 
 type TcpClient struct {
@@ -30,7 +33,7 @@ func NewTcpClient()( tcpClient *TcpClient ){
 
     tcpClient = new ( TcpClient )
     
-    tcpCient.isConnection = false;
+    tcpClient.isConnection = false;
 
     tcpClient.waitGroup = &sync.WaitGroup{}
     
@@ -42,27 +45,34 @@ func NewTcpClient()( tcpClient *TcpClient ){
 }
 
 
-type ( tcpClient *TcpClient ) Connect( addr string )  err {
+func  ( tcpClient *TcpClient ) Connect( addr string )  error {
     
-    s.tcpAddr , err = net.ResolveTCPAddr("tcp", addr )
+    var err error
+    tcpClient.tcpAddr , err = net.ResolveTCPAddr("tcp", addr )
     if err != nil {
         elog.LogSysln( addr, ":resolve tcp addr fail, please usage: 0.0.0.1:2345, fail: ", err )
-        return
+        return err
     }
     
-    conn , err := net.DialTCP("tcp", s.tcpAddr )
+    var localaddr *net.TCPAddr
+    localaddr , err = net.ResolveTCPAddr("tcp", "0.0.0.0")
+    conn , err := net.DialTCP("tcp", localaddr,tcpClient.tcpAddr )
     if err != nil {
         elog.LogSysln( "connect server , because :", err );
         return  err
     }
     
-    s.isConnection = true
-    tcpClient.conn = NeWConn( conn, tcpClient.eventDispatch )
+    tcpClient.isConnection = true
+    tcpClient.conn, err = NewConn( conn, tcpClient.eventDispatch, tcpClient.waitGroup )
     
+
+    if tcpClient.connCb != nil {
+        tcpClient.connCb( tcpClient.conn )
+    }
     //开始处理网络
-    go tcpClient.conn.handleEvent().
+    go tcpClient.conn.handleEvent()
     
-    return nil
+    return err
 }
 
 func ( tcpClient  *TcpClient ) onRead(  conn* Connection, id int32, msg proto.Message  ) {
@@ -73,7 +83,7 @@ func ( tcpClient  *TcpClient ) onRead(  conn* Connection, id int32, msg proto.Me
 
 }
 
-func ( tcpClient *TcpServer ) onClose(  conn* Connection ) {
+func ( tcpClient *TcpClient ) onClose(  conn* Connection ) {
 
     if tcpClient.closeCb != nil {
         tcpClient.closeCb( conn )
@@ -93,21 +103,21 @@ func ( tcpClient *TcpClient )  SetCloseCb( cb NET_CALLBACK ) {
     tcpClient.closeCb = cb
 }
 
-func ( s *TcpClient ) SetMsgParse( parse IMsgParse ) {
-    s.msgParse = parse
+func ( tcpClient  *TcpClient ) SetMsgParse( parse IMsgParse ) {
+    tcpClient.msgParse = parse
 }
 
-func ( tcpCient* TcpClient ) SetMsgDispather( dispatcher *MsgDispatcher ) {
+func ( tcpClient* TcpClient ) SetMsgDispather( dispatcher *MsgDispatcher ) {
     tcpClient.msgDispatcher = dispatcher
 }
 
-func ( tcpClient *TcpClient  ) Exit(  ) {
+func ( tcpClient *TcpClient  ) Close(  ) {
 
    tcpClient.eventDispatch.exit();
-   elog.LogSys(" close new conn ch ")
-   s.waitGroup.Wait()
-   //关闭连接
+   elog.LogSys(" close  conn  ")
    tcpClient.conn.Close()
+   tcpClient.waitGroup.Wait()
+   //关闭连接
    elog.Flush()
     
 }
