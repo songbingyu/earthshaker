@@ -2,7 +2,7 @@ package main
 
 import (
     "fmt"
-    "elog"
+    "es/elog"
     "es"
     "os"
     "os/signal"
