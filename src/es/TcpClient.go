@@ -5,7 +5,6 @@ import(
     "net"
    "sync"
    "elog"
-    proto "code.google.com/p/goprotobuf/proto"
 )
 
 type TcpClient struct {
@@ -40,7 +39,11 @@ func NewTcpClient()( tcpClient *TcpClient ){
     tcpClient.stopChan   = make( chan bool )
     
     tcpClient.eventDispatch ,_ = NewEventDispatch()
-        
+    
+    tcpClient.eventDispatch.RegistEvCb( CONN_READ, tcpClient.onRead )
+   
+    tcpClient.eventDispatch.RegistEvCb( CONN_CLOSE, tcpClient.onClose )
+ 
     return 
 }
 
@@ -75,18 +78,20 @@ func  ( tcpClient *TcpClient ) Connect( addr string )  error {
     return err
 }
 
-func ( tcpClient  *TcpClient ) onRead(  conn* Connection, id int32, msg proto.Message  ) {
+func ( tcpClient  *TcpClient ) onRead( e IEvent  ) {
 
+    ev := e.(*ConnReadEvent)
     //在这里加上用户消息处理时间
-    tcpClient.msgDispatcher.DispatchMsg( conn, id, msg )
-    elog.LogSys(" client read msg id :%d ", id )
+    tcpClient.msgDispatcher.DispatchMsg( ev.conn, ev.id, ev.msg )
+    elog.LogSys(" client read msg id :%d ", ev.id )
 
 }
 
-func ( tcpClient *TcpClient ) onClose(  conn* Connection ) {
+func ( tcpClient *TcpClient ) onClose(e IEvent ) {
 
+    ev := e.(*ConnCloseEvent)
     if tcpClient.closeCb != nil {
-        tcpClient.closeCb( conn )
+        tcpClient.closeCb( ev.conn )
     }
     elog.LogSys("cient close")
 }
@@ -113,7 +118,7 @@ func ( tcpClient* TcpClient ) SetMsgDispather( dispatcher *MsgDispatcher ) {
 
 func ( tcpClient *TcpClient  ) Close(  ) {
 
-   tcpClient.eventDispatch.exit();
+   tcpClient.eventDispatch.Close();
    elog.LogSys(" close  conn  ")
    tcpClient.conn.Close()
    tcpClient.waitGroup.Wait()

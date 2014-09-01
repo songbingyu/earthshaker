@@ -30,6 +30,8 @@ const  (
 //Fixme : need test
 const defEventNum = 1000;
 
+type  EVENT_CALLBACK  func( ev IEvent  )   
+
 type IEvent   interface {
     
     GetEventType() EventType 
@@ -124,7 +126,7 @@ type EventDispatch  struct {
     eventMu           [EVENT_MAX]sync.Mutex
     eventList         [EVENT_MAX] IEvent
     eventCh           [EVENT_MAX]chan IEvent
-    
+    eventCbs          [EVENT_MAX] EVENT_CALLBACK    
 }
 
 
@@ -260,15 +262,46 @@ func ( ed *EventDispatch  ) DelEvent( ev IEvent ) {
     ed.FreeEvent( ev )    
 }
 
-/*func ( ed *EventDispatch ) getEvents()( ch  chan *NetEvent ){
+
+func ( ed *EventDispatch ) RegistEvCb( et EventType , cb EVENT_CALLBACK ) {
+   
+    ed.eventCbs[ et ] = cb
+}
+
+func ( ed * EventDispatch ) UnRegistEvCb( et EventType ) {
+    ed.eventCbs[et ] = nil 
+}
+
+
+func ( ed *EventDispatch ) Loop(){
     
-    ch = ed.eventCh
-    return
-}*/
+    //Fixme :这里应该优化，should ?
+    select {
+       
+        case  e :=  <- ed.eventCh[ CONN_NEW ] :
+            ev := e.(*ConnNewEvent) 
+            if ed.eventCbs[CONN_NEW] != nil {
+                ed.eventCbs[CONN_NEW]( ev )
+            }
+            ed.DelEvent( e )
+        case  e := <- ed.eventCh[ CONN_READ ] :
+            ev := e.(*ConnReadEvent) 
+            if ed.eventCbs[CONN_READ] != nil {
+                ed.eventCbs[CONN_READ]( ev )
+            }
+            ed.DelEvent( e )
+        case  e := <- ed.eventCh[ CONN_CLOSE ] :
+            ev := e.(*ConnCloseEvent) 
+            if ed.eventCbs[CONN_CLOSE] != nil {
+                ed.eventCbs[CONN_CLOSE]( ev )
+            }
+            ed.DelEvent( e )
+
+    }
+}
 
 
-
-func ( ed *EventDispatch ) exit() {
+func ( ed *EventDispatch ) Close() {
 
     elog.LogSys("close event channel")
     

@@ -11,7 +11,7 @@ import (
     "net"
     "sync"
     "sync/atomic"
-    proto "code.google.com/p/goprotobuf/proto"
+    //proto "code.google.com/p/goprotobuf/proto"
     "elog"
 )
 
@@ -33,8 +33,6 @@ type TcpServer struct {
     newConnCh           chan *Connection
 
     maxConn             int 
-
-    eventLoop           *EventLoop
 
     eventDispatch       *EventDispatch
 
@@ -73,16 +71,19 @@ func NewTcpServer()( s *TcpServer ){
         
     s.maxConn = defMaxConn
 
-    s.eventLoop = newEventLoop( s.waitGroup )
-
     s.acceptor  = newAcceptor( s.waitGroup, s.eventDispatch, s.stopChan )
 
     s.connMap  = make( map[uint64]*Connection , s.maxConn )
     
     s.maxConnId     = 0;
 
+    s.eventDispatch.RegistEvCb( CONN_NEW, s.onConn )
     
-    return 
+    s.eventDispatch.RegistEvCb( CONN_READ, s.onRead )
+   
+    s.eventDispatch.RegistEvCb( CONN_CLOSE, s.onClose )
+   
+   return 
 }
 
 
@@ -108,7 +109,7 @@ func ( s* TcpServer ) Listen( addr string ) ( err error ) {
 }
 
 
-func ( s* TcpServer ) Run( ){
+func ( s* TcpServer ) Loop( ){
 
     if s.isListen == false {
     
@@ -116,41 +117,20 @@ func ( s* TcpServer ) Run( ){
 
         return 
     }
-    
-    elog.LogSys("begon recv event ") 
-
-   go func (){
-    elog.LogSys("begin wait events ")
-    s.waitGroup.Add(1)
-    defer s.waitGroup.Done()
-    
-/*    for  ne := range s.eventDispatch.getEvents() { 
-        switch ne.eventType {
-            case NEW:
-                s.onConn( ne.conn );
-            case READ:
-                s.onRead( ne.conn, ne.id, ne.msg )
-            case CLOSE:
-                s.onClose( ne.conn )
-            default:
-                elog.LogSysln(" unknow event type :", ne.eventType)
-        }
-        s.eventDispatch.freeEvent( ne )
-    }*/
-    elog.LogSys("end wait events ")
-  }()
+    s.eventDispatch.Loop()
 }
 
 
-func ( s *TcpServer ) onConn(  conn* Connection ) {
+func ( s *TcpServer ) onConn( e IEvent  ) {
     
+    ev := e.(*ConnNewEvent)
+    //控制数量
     if (len( s.connMap ) >= s.maxConn ){
-        conn.Close()
+        ev.conn.Close()
         return
     }
     
-    
-    
+    conn,_ := NewConn( ev.conn, s.eventDispatch, s.waitGroup ) 
     //设置消息解析器
     conn.setMsgParse( s.msgParse )
     //回调用户
@@ -160,28 +140,27 @@ func ( s *TcpServer ) onConn(  conn* Connection ) {
     //hi, go 
     conn.SetConnStatus(  CONNECTED )    
     conn.SetConnId(atomic.AddUint64(&s.maxConnId, 1) )
-    //s.connMap[ conn.fd  ] = conn  
-
+    s.AddConn( conn )
     go conn.handleEvent(); 
     elog.LogSys("receive conn id: %s , total : %d", conn.connId, len(s.connMap ))
 }
 
-func ( s *TcpServer ) onRead(  conn* Connection, id int32, msg proto.Message  ) {
+func ( s *TcpServer ) onRead( e IEvent ) {
 
+    ev := e.(*ConnReadEvent)
     //在这里加上用户消息处理时间
-    s.msgDispatcher.DispatchMsg( conn, id, msg )
-    elog.LogSys(" server  read msg id :%d ", id )
+    s.msgDispatcher.DispatchMsg( ev.conn, ev.id, ev.msg )
+    elog.LogSys(" server  read msg id :%d ", ev.id )
 
 }
 
-func ( s *TcpServer ) onClose(  conn* Connection ) {
+func ( s *TcpServer ) onClose(  e IEvent ) {
 
-    //s.connMap[ conn.tcpConn.connfdu ] = nil 
-    
+    ev := e.(*ConnCloseEvent)
     if s.closeCb != nil {
-        s.closeCb( conn )
+        s.closeCb( ev.conn )
     }
-    conn.SetConnStatus( NOCONNECT )
+    s.DelConn( ev.conn )
     elog.LogSys("cient close")
 }
 
@@ -221,7 +200,7 @@ func ( s* TcpServer ) SetMsgDispather( dispatcher *MsgDispatcher ) {
 
 func ( s* TcpServer ) Exit(  ) {
 
-   s.eventDispatch.exit();
+   s.eventDispatch.Close();
    s.stopChan <- false
    close( s.stopChan  )
    elog.LogSys(" close new conn ch ")
