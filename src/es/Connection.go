@@ -12,7 +12,7 @@ import (
     "sync"
     "sync/atomic"
     proto "code.google.com/p/goprotobuf/proto"
-    "elog"
+    "es/elog"
 )
 
 const defSendBufSize  = 1024*1024

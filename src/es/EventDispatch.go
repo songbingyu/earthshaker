@@ -10,7 +10,7 @@ package es
 import (
     "net"
     "sync"
-    "elog"
+    "es/elog"
     proto "code.google.com/p/goprotobuf/proto"
 )
 

@@ -4,7 +4,7 @@ package es
 import(
     "net"
    "sync"
-   "elog"
+   "es/elog"
 )
 
 type TcpClient struct {

@@ -13,7 +13,7 @@ import (
     "unsafe"
     "reflect"
     "encoding/binary"
-    "elog"
+    "es/elog"
     proto "code.google.com/p/goprotobuf/proto"
 )
 

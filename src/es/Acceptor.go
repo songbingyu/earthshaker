@@ -12,7 +12,7 @@ import (
     "net"
     "sync"
     "time"
-    "elog"
+    "es/elog"
 )
 
 

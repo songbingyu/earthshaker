@@ -8,7 +8,7 @@ package  es
 import (
     //"reflect"
     
-    "elog"
+    "es/elog"
     proto "code.google.com/p/goprotobuf/proto"
 )
 

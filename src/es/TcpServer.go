@@ -11,8 +11,7 @@ import (
     "net"
     "sync"
     "sync/atomic"
-    //proto "code.google.com/p/goprotobuf/proto"
-    "elog"
+    "es/elog"
 )
 
 
