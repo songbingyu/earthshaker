@@ -32,7 +32,7 @@ func ( s *esserver ) Init() {
 
 func ( s *esserver ) Run() {
 
-    s.tcpServer.Run()
+    s.tcpServer.Loop()
 
 }
 func NewEsServer ( ) *esserver {

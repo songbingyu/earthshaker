@@ -78,6 +78,15 @@ func  ( tcpClient *TcpClient ) Connect( addr string )  error {
     return err
 }
 
+
+func ( tcpClient *TcpClient ) Loop( ) {
+    if !tcpClient.isConnection {
+        elog.LogSys(" client not connevt server ")
+    }
+
+    tcpClient.eventDispatch.Loop()
+
+}
 func ( tcpClient  *TcpClient ) onRead( e IEvent  ) {
 
     ev := e.(*ConnReadEvent)
